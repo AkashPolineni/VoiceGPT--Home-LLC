@@ -52,7 +52,7 @@ The bot responds to sample interview questions such as:
 
 ---
 
-## 🛠️ Local Setup (Optional for Developers)
+## 🛠️ Local Setup (Optional)
 
 To run the app locally:
 
