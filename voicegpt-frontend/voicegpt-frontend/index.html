@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Voice Assistant - Final</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #particles {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+    }
+    .glass {
+      background: rgba(22, 27, 34, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 16px;
+      border: 1px solid rgba(139, 148, 158, 0.2);
+      padding: 24px;
+      width: 95%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #waveform {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: rgba(13, 17, 23, 0.5);
+      border: 1px solid rgba(139, 148, 158, 0.2);
+      position: relative;
+      margin: 20px auto;
+      cursor: pointer;
+      transition: all .3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #waveform:hover {
+      border-color: rgba(48, 128, 252, 0.5);
+      transform: scale(1.05);
+    }
+    #micIcon { color: #8b949e; transition: opacity 0.3s ease; }
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    #chat { margin-top: 20px; width: 100%; height: 35vh; overflow-y: auto; padding-right: 10px; }
+    .bubble {
+      margin: 10px 0;
+      padding: 12px 16px;
+      border-radius: 20px;
+      max-width: 85%;
+      animation: fadeIn .3s ease-out;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+    .user { margin-left: auto; background: #238636; color: #fff; }
+    .bot { margin-right: auto; background: #30363d; color: #c9d1d9; border: 1px solid rgba(139, 148, 158, 0.2); }
+    .error { background: #da3633; color: #fff; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #inputBox {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      margin: 24px auto 0 auto;
+      align-items: center;
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(139, 148, 158, 0.2);
+      background: #161b22;
+    }
+    input[type="text"] {
+      flex-grow: 1;
+      padding: 12px;
+      font-size: 1rem;
+      border: none;
+      background: transparent;
+      color: #c9d1d9;
+    }
+    input[type="text"]:focus {
+      outline: none;
+    }
+    button.send {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    button.send svg {
+      width: 24px;
+      height: 24px;
+      color: #c9d1d9;
+    }
+    button.send:hover svg {
+      color: #3080fc;
+    }
+
+    #liveSubtitle {
+      font-size: 0.8rem;
+      color: #60a5fa;
+      font-style: italic;
+      position: absolute;
+      bottom: -20px;
+      text-align: center;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="particles"></div>
+  <div class="glass">
+    <h1 class="text-2xl font-semibold">Voice Assistant</h1>
+
+    <div id="waveform" title="Click to Speak">
+      <svg id="micIcon" xmlns="http://www.w3.org/2000/svg" width="60" height="60" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M5 3a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0V3z"/>
+        <path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"/>
+      </svg>
+      <canvas id="waveCanvas"></canvas>
+      <div id="liveSubtitle"></div>
+    </div>
+
+    <div id="status" class="text-sm opacity-75 h-5">Click the circle to begin</div>
+    <div id="chat"></div>
+
+    <div id="inputBox" class="hidden">
+      <input type="text" id="textInput" placeholder="Type here..." />
+      <button class="send" title="Send">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const BACKEND_URL = "https://af6c5457-de96-4547-9995-3fc18f771fb1-00-3tby7lno7xp13.pike.replit.dev/ask";
+
+    const waveCanvas = document.getElementById('waveCanvas');
+    const ctx = waveCanvas.getContext('2d');
+    const waveformContainer = document.getElementById('waveform');
+    const micIcon = document.getElementById('micIcon');
+    const statusDiv = document.getElementById('status');
+    const chatContainer = document.getElementById('chat');
+    const inputBox = document.getElementById('inputBox');
+    const textInput = document.getElementById('textInput');
+    const sendBtn = document.querySelector('.send');
+    const liveSubtitle = document.getElementById('liveSubtitle');
+
+    let audioCtx, analyser, dataArray, animationFrameId, recognition;
+    let isListening = false;
+    let finalTranscript = '';
+
+    function resizeCanvas() {
+      waveCanvas.width = waveformContainer.clientWidth;
+      waveCanvas.height = waveformContainer.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function drawWaveform() {
+      if (!isListening) return;
+      animationFrameId = requestAnimationFrame(drawWaveform);
+      analyser.getByteTimeDomainData(dataArray);
+      const w = waveCanvas.width, h = waveCanvas.height;
+      const centerX = w / 2, centerY = h / 2;
+      const baseRadius = Math.min(w, h) / 4;
+      ctx.clearRect(0, 0, w, h);
+      ctx.beginPath();
+      ctx.strokeStyle = '#3080fc';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < dataArray.length; i++) {
+        const value = (dataArray[i] - 128) / 128.0;
+        const angle = (i / dataArray.length) * Math.PI * 2;
+        const radius = baseRadius + (value * baseRadius * 0.5);
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    function startListening() {
+      if (isListening) return;
+      isListening = true;
+      finalTranscript = '';
+      micIcon.style.opacity = '0';
+      liveSubtitle.textContent = '';
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          audioCtx.createMediaStreamSource(stream).connect(analyser);
+          drawWaveform();
+          recognition.start();
+        }).catch(() => {
+          statusDiv.innerHTML = '<span class="text-red-500">Mic permission denied!</span>';
+          stopListening();
+        });
+    }
+
+    function stopListening() {
+      if (!isListening) return;
+      isListening = false;
+      micIcon.style.opacity = '1';
+      recognition?.stop();
+      audioCtx?.close().catch(() => {});
+      cancelAnimationFrame(animationFrameId);
+      ctx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        statusDiv.innerHTML = `<span class="text-blue-400">🎙️ Listening...</span>`;
+      };
+
+      recognition.onresult = event => {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        liveSubtitle.textContent = interimTranscript;
+        if (finalTranscript && !interimTranscript) {
+          processRequest(finalTranscript);
+          stopListening();
+        }
+      };
+
+      recognition.onerror = event => {
+        statusDiv.innerHTML = `
+          <span class="text-red-500">❌ Speech recognition failed</span>
+          <div class="text-xs text-red-400 mt-1 italic">Speech-to-text failed due to insufficient credits or mic issue. Please check your API status or mic permissions.</div>
+        `;
+        stopListening();
+      };
+
+      recognition.onend = () => {
+        if (!finalTranscript) stopListening();
+      };
+    } else {
+      statusDiv.textContent = 'Browser doesn\'t support Speech Recognition.';
+      waveformContainer.style.display = 'none';
+    }
+
+    function addBubble(text, type, isError = false) {
+      const bubble = document.createElement('div');
+      bubble.textContent = text;
+      bubble.className = `bubble ${type} ${isError ? 'error' : ''}`;
+      chatContainer.appendChild(bubble);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function processRequest(message) {
+      const trimmedMessage = message.trim();
+      if (!trimmedMessage) return;
+      addBubble(trimmedMessage, 'user');
+      textInput.value = '';
+      statusDiv.textContent = '🤖 Thinking...';
+      inputBox.classList.remove('hidden');
+      fetch(BACKEND_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: trimmedMessage })
+      })
+        .then(res => {
+          if (!res.ok) return Promise.reject(new Error(`Check Backend Console. Please try again later.`));
+          return res.json();
+        })
+
+      .then(data => {
+        addBubble(data.reply || 'No response found.', 'bot');
+        statusDiv.textContent = 'Click the circle to speak again.';
+      })
+      .catch(err => {
+        addBubble(`❌ ${err.message}`, 'bot', true);
+        statusDiv.innerHTML = `
+          <span class="text-red-500">❌ API request failed</span>
+          <div class="text-xs text-red-400 mt-1 italic"> Backend connected and responsive. Insufficient Credits, use an API Key with credit.</div>
+        `;
+      });
+    }
+
+    waveformContainer.onclick = () => isListening ? stopListening() : startListening();
+    sendBtn.onclick = () => processRequest(textInput.value);
+    textInput.addEventListener('keypress', e => e.key === 'Enter' && sendBtn.click());
+
+    tsParticles.load("particles", {
+      fpsLimit: 120,
+      particles: {
+        number: { value: 60, density: { enable: true, value_area: 800 } },
+        color: { value: "#8b949e" },
+        shape: { type: "circle" },
+        opacity: { value: { min: 0.1, max: 0.4 }, animation: { enable: true, speed: 0.5, sync: false } },
+        size: { value: { min: 1, max: 4 }, animation: { enable: true, speed: 2, sync: false } },
+        move: {
+          enable: true,
+          speed: { min: 0.1, max: 1 },
+          direction: "none",
+          random: true,
+          straight: false,
+          outModes: { default: "out" },
+        },
+        links: { enable: false },
+      },
+      interactivity: {
+        events: {
+          onhover: { enable: true, mode: "bubble" },
+          onclick: { enable: true, mode: "push" },
+        },
+        modes: {
+          bubble: { distance: 200, size: 8, duration: 2, opacity: 1, speed: 3 },
+          push: { quantity: 4 },
+        },
+      },
+      detectRetina: true,
+    });
+  </script>
+</body>
+</html>
