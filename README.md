@@ -50,6 +50,10 @@ The bot responds to sample interview questions such as:
 - 💬 Clear and simple design for ease of use  
 - 🛠️ Optional local setup for developers (see below)
 
+## 🔄 Uptime Maintenance
+To keep the deployed web app active and prevent it from going to sleep (especially on free hosting services like Render), a cron-job.org service is used to ping the server at regular intervals.
+
+🛠️ Note: This does not affect functionality and ensures the app remains responsive for users during testing.
 ---
 
 ## 🛠️ Local Setup (Optional)
