@@ -41,6 +41,10 @@ def ask():
     except Exception as e:
         print("❌ ERROR:", str(e))
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
+        
+@app.route('/ping')
+def ping():
+    return "OK", 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3000)
